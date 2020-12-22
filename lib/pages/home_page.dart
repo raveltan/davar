@@ -1,4 +1,4 @@
-import 'package:device_apps/device_apps.dart';
+import 'package:davar/pages/reading_page.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
@@ -7,14 +7,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  Future<bool> _checkJWLibInstalled() async {
-    return DeviceApps.isAppInstalled('org.jw.jwlibrary.mobile');
+  void _startReading() => Navigator.of(context)
+      .push(MaterialPageRoute(builder: (x) => ReadingPage()));
+
+  void _selectReminderTime() {
+    showTimePicker(
+        context: context, initialTime: TimeOfDay(hour: 8, minute: 0));
   }
 
-  void _openJWLib() async {
-    await DeviceApps.openApp('org.jw.jwlibrary.mobile');
-  }
-
+  bool _showNotificationStatus = false;
   bool _isLoading = false;
 
   @override
@@ -29,7 +30,7 @@ class _HomePageState extends State<HomePage> {
           ? Container()
           : FloatingActionButton(
               child: Icon(Icons.book),
-              onPressed: _openJWLib,
+              onPressed: _startReading,
             ),
       backgroundColor: Colors.white,
       body: _isLoading
@@ -58,11 +59,11 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: EdgeInsets.only(bottom: 24, left: 24, right: 24),
+                    padding: EdgeInsets.only(bottom: 16, left: 24, right: 24),
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.only(
-                            bottomRight: Radius.circular(25),
-                            bottomLeft: Radius.circular(25)),
+                            bottomRight: Radius.circular(30),
+                            bottomLeft: Radius.circular(30)),
                         color: Colors.blue),
                     child: Column(
                       children: [
@@ -77,7 +78,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         SizedBox(
-                          height: 4,
+                          height: 12,
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -96,12 +97,14 @@ class _HomePageState extends State<HomePage> {
                   ),
                   Expanded(
                     child: ListView(
+                      physics: const BouncingScrollPhysics(),
                       children: [
                         SwitchListTile(
                           title: Text('Enable Notification'),
                           subtitle: Text('Remind me to read everyday'),
-                          onChanged: (d) {},
-                          value: true,
+                          onChanged: (d) =>
+                              setState(() => _showNotificationStatus = d),
+                          value: _showNotificationStatus,
                         ),
                         Divider(
                           height: 0,
@@ -118,15 +121,28 @@ class _HomePageState extends State<HomePage> {
                             ),
                             backgroundColor: Colors.blue,
                           ),
+                          onTap: _selectReminderTime,
+                        ),
+                        Divider(height: 0),
+                        ListTile(
+                          title: Text("Select Bible Edition"),
+                          subtitle: Text('English - Study Bible'),
+                          trailing: Icon(Icons.book),
                           onTap: () {},
                         ),
+                        Divider(height: 0),
                         ListTile(
-                          title: Text('About Davar'),
-                          onTap: (){
-                            showAboutDialog(context: context,
-                            applicationName: 'Davar',);
-                          },
+                          title: Text("Support Us"),
+                          subtitle: Text(
+                              'Submit code or bug request'),
+                          trailing: Icon(Icons.bug_report),
+                          onTap: () {},
                         ),
+                        Divider(height: 0),
+                        ListTile(
+                          title: Text('Version'),
+                          subtitle: Text('0.0.1 א'),
+                        )
                       ],
                     ),
                   )
