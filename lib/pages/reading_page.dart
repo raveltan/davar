@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class ReadingPage extends StatefulWidget {
@@ -45,18 +46,33 @@ class _ReadingPageState extends State<ReadingPage> {
         child: SafeArea(
           child: Column(
             children: [
+              Container(
+                child: ListTile(
+                  tileColor: Colors.blue,
+                  title: Text(
+                    'Save progress',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    "Press back to save progress and exit",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  trailing: Icon(
+                    Icons.save,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Divider(
+                height: 0,
+                thickness: 2.0,
+                color: Colors.white,
+              ),
               Expanded(
                 child: WebView(
                   javascriptMode: JavascriptMode.unrestricted,
                   initialUrl:
                       'https://www.jw.org/en/library/bible/study-bible/books/',
-                ),
-              ),
-              Container(
-                child: ListTile(
-                  title: Text('Save progress'),
-                  subtitle: Text("Press back to save progress and exit"),
-                  trailing: Icon(Icons.save),
                 ),
               ),
             ],
