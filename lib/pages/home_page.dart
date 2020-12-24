@@ -1,7 +1,7 @@
 import 'package:davar/pages/bible_selection_page.dart';
 import 'package:davar/pages/reading_page.dart';
 import 'package:davar/utils/editions.dart';
-import 'package:davar/widget/DividerTile.dart';
+import 'package:davar/widget/divider_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -23,30 +23,30 @@ class _HomePageState extends State<HomePage> {
   void _startReading() => Navigator.of(context)
       .push(MaterialPageRoute(builder: (x) => ReadingPage(_box)));
 
-  void setNotification() async {
+  void setNotification(Duration d) async {
     final String currentTimeZone =
         await FlutterNativeTimezone.getLocalTimezone();
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation(currentTimeZone));
     await _notificationsPlugin.zonedSchedule(
         0,
-        'Hello',
-        'scheduled body',
-        tz.TZDateTime.now(tz.local).add(const Duration(seconds: 20)),
+        'Davar',
+        'Time for daily Bible reading 😁',
+        tz.TZDateTime.now(tz.local).add(d),
         const NotificationDetails(
             android: AndroidNotificationDetails('net.lightbear.davar',
-                'Bible Notification', 'Notify user to read Bible')),
+                'Bible Notification', 'Notify user to read Bible',enableLights: true,
+            channelShowBadge: true,
+              enableVibration: true,
+              priority: Priority.max,
+              color: Colors.blue,
+              importance: Importance.max,
+              playSound: true,
+            )),
         androidAllowWhileIdle: true,
         matchDateTimeComponents: DateTimeComponents.time,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime);
-  }
-
-  void _selectReminderTime() async {
-    final result = await showTimePicker(
-        context: context, initialTime: TimeOfDay(hour: 8, minute: 0));
-    if (result == null) return;
-    _box.put("time", [result.hour, result.minute]);
   }
 
   bool _isLoading = false;
@@ -192,8 +192,7 @@ class _HomePageState extends State<HomePage> {
                             SwitchListTile(
                               title: Text('Enable Notification'),
                               subtitle: Text('Remind me to read everyday'),
-                              onChanged: (d) =>
-                                  _box.put('notification_enabled', d),
+                              onChanged: _enableNotification,
                               value: _box.get('notification_enabled',
                                   defaultValue: false),
                             ),
@@ -259,5 +258,32 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
     );
+  }
+
+  void _enableNotification(bool value) async {
+    await _notificationsPlugin.cancelAll();
+    if (!value) {
+      print('cancel notification');
+    } else {
+      print('enable notification');
+      var scheduledTime = _box.get('time', defaultValue: [8, 0]);
+      var now = DateTime.now();
+      var next = DateTime(
+          now.year, now.month, now.day, scheduledTime[0], scheduledTime[1]);
+      next = next.add(Duration(days: 1));
+      var diff = next.difference(now);
+      setNotification(diff);
+    }
+    _box.put('notification_enabled', value);
+  }
+
+  void _selectReminderTime() async {
+    var st = _box.get('time', defaultValue: [8, 0]);
+    final result = await showTimePicker(
+        context: context, initialTime: TimeOfDay(hour: st[0], minute: st[1]));
+    if (result == null) return;
+    await _box.put("time", [result.hour, result.minute]);
+    _enableNotification(
+        await _box.get('notification_enabled', defaultValue: false));
   }
 }

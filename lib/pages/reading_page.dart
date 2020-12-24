@@ -23,7 +23,6 @@ class _ReadingPageState extends State<ReadingPage> {
 
   void _setUrl(String url) {
     if (this._url == url) return;
-    print(url);
     this._url = url;
     widget._box.put('progress', url);
   }
@@ -37,6 +36,13 @@ class _ReadingPageState extends State<ReadingPage> {
             height: MediaQuery.of(context).padding.top,
             width: double.infinity,
             color: Color.fromRGBO(55, 52, 51, 1),
+          ),
+          Expanded(
+            child: InAppWebView(
+              initialUrl: _url,
+              //onLoadStart: (c,s) => print(s),
+              onTitleChanged: (c, s) async => _setUrl(await c.getUrl()),
+            ),
           ),
           ListTile(
             title: Text(
@@ -52,13 +58,6 @@ class _ReadingPageState extends State<ReadingPage> {
               color: Colors.white,
               icon: Icon(Icons.check),
               onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          Expanded(
-            child: InAppWebView(
-              initialUrl: _url,
-              //onLoadStart: (c,s) => print(s),
-              onTitleChanged: (c, s) async => await _setUrl(await c.getUrl()),
             ),
           ),
         ],
