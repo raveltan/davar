@@ -1,8 +1,13 @@
 import 'package:davar/pages/reading_page.dart';
+import 'package:davar/utils/editions.dart';
+import 'package:davar/widget/DividerTile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_timezone/flutter_native_timezone.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:package_info/package_info.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:timezone/data/latest.dart' as tz;
@@ -17,25 +22,49 @@ class _HomePageState extends State<HomePage> {
   void _startReading() => Navigator.of(context)
       .push(MaterialPageRoute(builder: (x) => ReadingPage()));
 
-  void _selectReminderTime() {
-    showTimePicker(
-        context: context, initialTime: TimeOfDay(hour: 8, minute: 0));
+  void setNotification() async {
+    final String currentTimeZone =
+        await FlutterNativeTimezone.getLocalTimezone();
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation(currentTimeZone));
+    await _notificationsPlugin.zonedSchedule(
+        0,
+        'Hello',
+        'scheduled body',
+        tz.TZDateTime.now(tz.local).add(const Duration(seconds: 20)),
+        const NotificationDetails(
+            android: AndroidNotificationDetails('net.lightbear.davar',
+                'Scheduled', 'your channel description')),
+        androidAllowWhileIdle: true,
+        matchDateTimeComponents: DateTimeComponents.time,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime);
   }
 
-  bool _showNotificationStatus = false;
+  void _selectReminderTime() async {
+    final result = await showTimePicker(
+        context: context, initialTime: TimeOfDay(hour: 8, minute: 0));
+    _box.put("; time",
+        '${result.hour < 10 ? '0' + result.hour.toString() : result.hour}:${result.minute < 10 ? '0' + result.minute.toString() : result.minute}');
+  }
+
   bool _isLoading = false;
 
   FlutterLocalNotificationsPlugin _notificationsPlugin;
 
-  Future<void> selectNotification(String payload) async => await _startReading();
+  Future<void> selectNotification(String payload) async =>
+      await _startReading();
 
   @override
   void initState() {
     super.initState();
-    createNotifChannel();
+    setupStorageAndNotificationChannel();
   }
 
-  void createNotifChannel() async {
+  Box _box;
+  String _version;
+
+  void setupStorageAndNotificationChannel() async {
     setState(() {
       _isLoading = true;
     });
@@ -44,6 +73,10 @@ class _HomePageState extends State<HomePage> {
       systemNavigationBarIconBrightness: Brightness.dark,
       statusBarColor: Colors.blue, // status bar color
     ));
+    var packageInfo = await PackageInfo.fromPlatform();
+    _version = packageInfo.version +'+'+ packageInfo.buildNumber;
+    await Hive.initFlutter();
+    _box = await Hive.openBox('davar_data');
     _notificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/launcher_icon');
@@ -102,142 +135,142 @@ class _HomePageState extends State<HomePage> {
               ),
             )
           : SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.only(bottom: 16, left: 24, right: 24),
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.only(
-                            bottomRight: Radius.circular(30),
-                            bottomLeft: Radius.circular(30)),
-                        color: Colors.blue),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 8.0,
-                        ),
-                        Text(
-                          '“They continued reading aloud from the book, from the Law of the true God, clearly explaining it and putting meaning into it; so they helped the people to understand what was being read.”',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
+              child: ValueListenableBuilder(
+                valueListenable: _box.listenable(),
+                builder: (c, box, w) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.only(bottom: 16, left: 24, right: 24),
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.only(
+                              bottomRight: Radius.circular(30),
+                              bottomLeft: Radius.circular(30)),
+                          color: Colors.blue),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 8.0,
                           ),
-                        ),
-                        SizedBox(
-                          height: 12,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              "Nehemiah 8:8",
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold),
+                          Text(
+                            '“They continued reading aloud from the book, from the Law of the true God, clearly explaining it and putting meaning into it; so they helped the people to understand what was being read.”',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      physics: const BouncingScrollPhysics(),
-                      children: [
-                        SwitchListTile(
-                          title: Text('Enable Notification'),
-                          subtitle: Text('Remind me to read everyday'),
-                          onChanged: (d) =>
-                              setState(() => _showNotificationStatus = d),
-                          value: _showNotificationStatus,
-                        ),
-                        Divider(
-                          height: 0,
-                        ),
-                        ListTile(
-                          title: Text('Reminder Time'),
-                          subtitle: Text('Set the reading reminder time'),
-                          trailing: Chip(
-                            label: Text(
-                              '09.00 AM',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            backgroundColor: Colors.blue,
                           ),
-                          onTap: _selectReminderTime,
-                        ),
-                        Divider(height: 0),
-                        ListTile(
-                          title: Text("Select Bible Edition"),
-                          subtitle: Text('English - Study Bible'),
-                          trailing: Icon(Icons.book),
-                          onTap: () async {
-                            // const AndroidNotificationDetails
-                            //     androidPlatformChannelSpecifics =
-                            //     AndroidNotificationDetails(
-                            //         'net.lightbear.davar',
-                            //         'Davar',
-                            //         'Show bible reading notification',
-                            //         importance: Importance.max,
-                            //         priority: Priority.high,
-                            //         showWhen: false);
-                            // const NotificationDetails platformChannelSpecifics =
-                            //     NotificationDetails(
-                            //         android: androidPlatformChannelSpecifics);
-                            // await _notificationsPlugin.show(
-                            //     0,
-                            //     'Hello there',
-                            //     'Time for daily Bible reading.',
-                            //     platformChannelSpecifics,
-                            //     payload: 'item x');
-
-                            // const AndroidNotificationDetails androidPlatformChannelSpecifics =
-                            // AndroidNotificationDetails('net.lightbear.davar',
-                            //     'Reminder', 'repeating description');
-                            // const NotificationDetails platformChannelSpecifics =
-                            // NotificationDetails(android: androidPlatformChannelSpecifics);
-                            // await _notificationsPlugin.periodicallyShow(0, 'repeating title',
-                            //     'repeating body', RepeatInterval.everyMinute, platformChannelSpecifics,
-                            //     androidAllowWhileIdle: true);
-
-                            final String currentTimeZone = await FlutterNativeTimezone.getLocalTimezone();
-                            tz.initializeTimeZones();
-                            tz.setLocalLocation(tz.getLocation(currentTimeZone));
-                            await _notificationsPlugin.zonedSchedule(
-                                0,
-                                'Hello',
-                                'scheduled body',
-                                tz.TZDateTime.now(tz.local).add(const Duration(seconds: 20)),
-                                const NotificationDetails(
-                                    android: AndroidNotificationDetails('net.lightbear.davar',
-                                        'Scheduled', 'your channel description')),
-                                androidAllowWhileIdle: true,
-                                matchDateTimeComponents: DateTimeComponents.time,
-                                uiLocalNotificationDateInterpretation:
-                                UILocalNotificationDateInterpretation.absoluteTime);
-                          },
-                        ),
-                        Divider(height: 0),
-                        ListTile(
-                          title: Text("Support Us"),
-                          subtitle: Text('Submit code or bug request'),
-                          trailing: Icon(Icons.bug_report),
-                          onTap: () =>
-                              launch('https://github.com/raveltan/davar'),
-                        ),
-                        Divider(height: 0),
-                        ListTile(
-                          title: Text('Version'),
-                          subtitle: Text('0.0.1 א'),
-                        )
-                      ],
+                          SizedBox(
+                            height: 12,
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                "Nehemiah 8:8",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  )
-                ],
+                    Expanded(
+                      child: ListView(
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          SwitchListTile(
+                            title: Text('Enable Notification'),
+                            subtitle: Text('Remind me to read everyday'),
+                            onChanged: (d) =>
+                                _box.put('notification_enabled', d),
+                            value: _box.get('notification_enabled',
+                                defaultValue: false),
+                          ),
+                          Divider(
+                            height: 0,
+                          ),
+                          ListTile(
+                            title: Text('Reminder Time'),
+                            subtitle: Text('Set the reading reminder time'),
+                            trailing: Chip(
+                              label: Text(
+                                _box.get('time', defaultValue: '08:00'),
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              backgroundColor: Colors.blue,
+                            ),
+                            onTap: _selectReminderTime,
+                          ),
+                          DividerTile('Bible'),
+                          ListTile(
+                            title: Text("Select Bible Edition"),
+                            subtitle: Text(bibleEditions[
+                                    _box.get('edition', defaultValue: 0)]
+                                .name),
+                            trailing: Icon(Icons.book),
+                            onTap: () =>
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    fullscreenDialog: true,
+                                    builder: (x) => Scaffold(
+                                          appBar: AppBar(
+                                            title: Text('Select Bible Edition'),
+                                          ),
+                                          body: ListView.separated(
+                                            physics: BouncingScrollPhysics(),
+                                            itemCount: bibleEditions.length,
+                                            itemBuilder: (x, i) => ListTile(
+                                              title:
+                                                  Text(bibleEditions[i].name),
+                                              onTap: () {
+                                                _box.put('edition', i);
+                                                _box.put('progress',
+                                                    bibleEditions[i].url);
+                                                Navigator.of(x).pop();
+                                              },
+                                            ),
+                                            separatorBuilder:
+                                                (BuildContext context,
+                                                        int index) =>
+                                                    Divider(
+                                              height: 0,
+                                            ),
+                                          ),
+                                        ))),
+                          ),
+                          ListTile(
+                            title: Text("Bible Source"),
+                            trailing: Text(
+                              'JW.org',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            onTap: () => launch('https://jw.org'),
+                          ),
+                          DividerTile('About Davar'),
+                          ListTile(
+                            title: Text("Support Davar"),
+                            subtitle: Text('Submit code or bug request'),
+                            trailing: Icon(Icons.bug_report),
+                            onTap: () =>
+                                launch('https://github.com/raveltan/davar'),
+                          ),
+                          ListTile(
+                            title: Text('Version'),
+                            subtitle: Text(_version),
+                          ),
+                          Divider(height: 0),
+                          Container(
+                            height: 75,
+                          )
+                        ],
+                      ),
+                    )
+                  ],
+                ),
               ),
             ),
     );
