@@ -2,7 +2,11 @@ import 'package:davar/pages/reading_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_native_timezone/flutter_native_timezone.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class HomePage extends StatefulWidget {
   @override
@@ -23,7 +27,7 @@ class _HomePageState extends State<HomePage> {
 
   FlutterLocalNotificationsPlugin _notificationsPlugin;
 
-  selectNotification(String payload) => _startReading();
+  Future<void> selectNotification(String payload) async => await _startReading();
 
   @override
   void initState() {
@@ -172,33 +176,49 @@ class _HomePageState extends State<HomePage> {
                           subtitle: Text('English - Study Bible'),
                           trailing: Icon(Icons.book),
                           onTap: () async {
-                            const AndroidNotificationDetails
-                                androidPlatformChannelSpecifics =
-                                AndroidNotificationDetails(
-                                    'net.lightbear.davar',
-                                    'Davar',
-                                    'Show bible reading notification',
-                                    importance: Importance.max,
-                                    priority: Priority.high,
-                                    showWhen: false);
-                            const NotificationDetails platformChannelSpecifics =
-                                NotificationDetails(
-                                    android: androidPlatformChannelSpecifics);
-                            await _notificationsPlugin.show(
-                                0,
-                                'Hello there',
-                                'Time for daily Bible reading.',
-                                platformChannelSpecifics,
-                                payload: 'item x');
+                            // const AndroidNotificationDetails
+                            //     androidPlatformChannelSpecifics =
+                            //     AndroidNotificationDetails(
+                            //         'net.lightbear.davar',
+                            //         'Davar',
+                            //         'Show bible reading notification',
+                            //         importance: Importance.max,
+                            //         priority: Priority.high,
+                            //         showWhen: false);
+                            // const NotificationDetails platformChannelSpecifics =
+                            //     NotificationDetails(
+                            //         android: androidPlatformChannelSpecifics);
+                            // await _notificationsPlugin.show(
+                            //     0,
+                            //     'Hello there',
+                            //     'Time for daily Bible reading.',
+                            //     platformChannelSpecifics,
+                            //     payload: 'item x');
 
                             // const AndroidNotificationDetails androidPlatformChannelSpecifics =
                             // AndroidNotificationDetails('net.lightbear.davar',
                             //     'Reminder', 'repeating description');
                             // const NotificationDetails platformChannelSpecifics =
                             // NotificationDetails(android: androidPlatformChannelSpecifics);
-                            // await widget._notificationsPlugin.periodicallyShow(0, 'repeating title',
+                            // await _notificationsPlugin.periodicallyShow(0, 'repeating title',
                             //     'repeating body', RepeatInterval.everyMinute, platformChannelSpecifics,
                             //     androidAllowWhileIdle: true);
+
+                            final String currentTimeZone = await FlutterNativeTimezone.getLocalTimezone();
+                            tz.initializeTimeZones();
+                            tz.setLocalLocation(tz.getLocation(currentTimeZone));
+                            await _notificationsPlugin.zonedSchedule(
+                                0,
+                                'Hello',
+                                'scheduled body',
+                                tz.TZDateTime.now(tz.local).add(const Duration(seconds: 20)),
+                                const NotificationDetails(
+                                    android: AndroidNotificationDetails('net.lightbear.davar',
+                                        'Scheduled', 'your channel description')),
+                                androidAllowWhileIdle: true,
+                                matchDateTimeComponents: DateTimeComponents.time,
+                                uiLocalNotificationDateInterpretation:
+                                UILocalNotificationDateInterpretation.absoluteTime);
                           },
                         ),
                         Divider(height: 0),
