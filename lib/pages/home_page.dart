@@ -1,3 +1,4 @@
+import 'package:davar/pages/bible_selection_page.dart';
 import 'package:davar/pages/reading_page.dart';
 import 'package:davar/utils/editions.dart';
 import 'package:davar/widget/DividerTile.dart';
@@ -20,7 +21,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   void _startReading() => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (x) => ReadingPage()));
+      .push(MaterialPageRoute(builder: (x) => ReadingPage(_box)));
 
   void setNotification() async {
     final String currentTimeZone =
@@ -34,7 +35,7 @@ class _HomePageState extends State<HomePage> {
         tz.TZDateTime.now(tz.local).add(const Duration(seconds: 20)),
         const NotificationDetails(
             android: AndroidNotificationDetails('net.lightbear.davar',
-                'Scheduled', 'your channel description')),
+                'Bible Notification', 'Notify user to read Bible')),
         androidAllowWhileIdle: true,
         matchDateTimeComponents: DateTimeComponents.time,
         uiLocalNotificationDateInterpretation:
@@ -44,8 +45,8 @@ class _HomePageState extends State<HomePage> {
   void _selectReminderTime() async {
     final result = await showTimePicker(
         context: context, initialTime: TimeOfDay(hour: 8, minute: 0));
-    _box.put("; time",
-        '${result.hour < 10 ? '0' + result.hour.toString() : result.hour}:${result.minute < 10 ? '0' + result.minute.toString() : result.minute}');
+    if (result == null) return;
+    _box.put("time", [result.hour, result.minute]);
   }
 
   bool _isLoading = false;
@@ -68,13 +69,13 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _isLoading = true;
     });
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      systemNavigationBarColor: Colors.white, // nav
-      systemNavigationBarIconBrightness: Brightness.dark,
-      statusBarColor: Colors.blue, // status bar color
-    ));
+    // SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    //   systemNavigationBarColor: Colors.white, // nav
+    //   systemNavigationBarIconBrightness: Brightness.dark,
+    //   statusBarColor: Colors.blue, // status bar color
+    // ));
     var packageInfo = await PackageInfo.fromPlatform();
-    _version = packageInfo.version +'+'+ packageInfo.buildNumber;
+    _version = packageInfo.version + '+' + packageInfo.buildNumber;
     await Hive.initFlutter();
     _box = await Hive.openBox('davar_data');
     _notificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -137,140 +138,124 @@ class _HomePageState extends State<HomePage> {
           : SafeArea(
               child: ValueListenableBuilder(
                 valueListenable: _box.listenable(),
-                builder: (c, box, w) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.only(bottom: 16, left: 24, right: 24),
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.only(
-                              bottomRight: Radius.circular(30),
-                              bottomLeft: Radius.circular(30)),
-                          color: Colors.blue),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 8.0,
-                          ),
-                          Text(
-                            '“They continued reading aloud from the book, from the Law of the true God, clearly explaining it and putting meaning into it; so they helped the people to understand what was being read.”',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
+                builder: (c, box, w) {
+                  List<int> _rt = _box.get('time', defaultValue: [8, 0]);
+                  var _reminderTimeString =
+                      (_rt[0] < 10 ? '0' + '${_rt[0]}' : '${_rt[0]}') +
+                          ':' +
+                          (_rt[1] < 10 ? '0' + '${_rt[1]}' : '${_rt[1]}');
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding:
+                            EdgeInsets.only(bottom: 16, left: 24, right: 24),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.only(
+                                bottomRight: Radius.circular(30),
+                                bottomLeft: Radius.circular(30)),
+                            color: Colors.blue),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: 8.0,
                             ),
-                          ),
-                          SizedBox(
-                            height: 12,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                "Nehemiah 8:8",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold),
+                            Text(
+                              '“They continued reading aloud from the book, from the Law of the true God, clearly explaining it and putting meaning into it; so they helped the people to understand what was being read.”',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                            SizedBox(
+                              height: 12,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  "Nehemiah 8:8",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        physics: const BouncingScrollPhysics(),
-                        children: [
-                          SwitchListTile(
-                            title: Text('Enable Notification'),
-                            subtitle: Text('Remind me to read everyday'),
-                            onChanged: (d) =>
-                                _box.put('notification_enabled', d),
-                            value: _box.get('notification_enabled',
-                                defaultValue: false),
-                          ),
-                          Divider(
-                            height: 0,
-                          ),
-                          ListTile(
-                            title: Text('Reminder Time'),
-                            subtitle: Text('Set the reading reminder time'),
-                            trailing: Chip(
-                              label: Text(
-                                _box.get('time', defaultValue: '08:00'),
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
+                      Expanded(
+                        child: ListView(
+                          physics: const BouncingScrollPhysics(),
+                          children: [
+                            SwitchListTile(
+                              title: Text('Enable Notification'),
+                              subtitle: Text('Remind me to read everyday'),
+                              onChanged: (d) =>
+                                  _box.put('notification_enabled', d),
+                              value: _box.get('notification_enabled',
+                                  defaultValue: false),
+                            ),
+                            Divider(
+                              height: 0,
+                            ),
+                            ListTile(
+                              title: Text('Reminder Time'),
+                              subtitle: Text('Set the reading reminder time'),
+                              trailing: Chip(
+                                label: Text(
+                                  _reminderTimeString,
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                backgroundColor: Colors.blue,
                               ),
-                              backgroundColor: Colors.blue,
+                              onTap: _selectReminderTime,
                             ),
-                            onTap: _selectReminderTime,
-                          ),
-                          DividerTile('Bible'),
-                          ListTile(
-                            title: Text("Select Bible Edition"),
-                            subtitle: Text(bibleEditions[
-                                    _box.get('edition', defaultValue: 0)]
-                                .name),
-                            trailing: Icon(Icons.book),
-                            onTap: () =>
-                                Navigator.of(context).push(MaterialPageRoute(
-                                    fullscreenDialog: true,
-                                    builder: (x) => Scaffold(
-                                          appBar: AppBar(
-                                            title: Text('Select Bible Edition'),
-                                          ),
-                                          body: ListView.separated(
-                                            physics: BouncingScrollPhysics(),
-                                            itemCount: bibleEditions.length,
-                                            itemBuilder: (x, i) => ListTile(
-                                              title:
-                                                  Text(bibleEditions[i].name),
-                                              onTap: () {
-                                                _box.put('edition', i);
-                                                _box.put('progress',
-                                                    bibleEditions[i].url);
-                                                Navigator.of(x).pop();
-                                              },
-                                            ),
-                                            separatorBuilder:
-                                                (BuildContext context,
-                                                        int index) =>
-                                                    Divider(
-                                              height: 0,
-                                            ),
-                                          ),
-                                        ))),
-                          ),
-                          ListTile(
-                            title: Text("Bible Source"),
-                            trailing: Text(
-                              'JW.org',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                            DividerTile('Bible'),
+                            ListTile(
+                              title: Text("Select Bible Edition"),
+                              subtitle: Text(bibleEditions[
+                                      _box.get('edition', defaultValue: 0)]
+                                  .name),
+                              trailing: Icon(Icons.book),
+                              onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      fullscreenDialog: true,
+                                      builder: (x) => BibleSelection(_box))),
                             ),
-                            onTap: () => launch('https://jw.org'),
-                          ),
-                          DividerTile('About Davar'),
-                          ListTile(
-                            title: Text("Support Davar"),
-                            subtitle: Text('Submit code or bug request'),
-                            trailing: Icon(Icons.bug_report),
-                            onTap: () =>
-                                launch('https://github.com/raveltan/davar'),
-                          ),
-                          ListTile(
-                            title: Text('Version'),
-                            subtitle: Text(_version),
-                          ),
-                          Divider(height: 0),
-                          Container(
-                            height: 75,
-                          )
-                        ],
-                      ),
-                    )
-                  ],
-                ),
+                            ListTile(
+                              title: Text("Bible Source"),
+                              trailing: Text(
+                                'JW.org',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              onTap: () => launch('https://jw.org'),
+                            ),
+                            DividerTile('About Davar'),
+                            ListTile(
+                              title: Text("Support Davar"),
+                              subtitle: Text('Submit code or bug request'),
+                              trailing: Icon(Icons.bug_report),
+                              onTap: () =>
+                                  launch('https://github.com/raveltan/davar'),
+                            ),
+                            ListTile(
+                              title: Text('Version'),
+                              subtitle: Text(_version),
+                            ),
+                            Divider(height: 0),
+                            Container(
+                              height: 75,
+                            )
+                          ],
+                        ),
+                      )
+                    ],
+                  );
+                },
               ),
             ),
     );

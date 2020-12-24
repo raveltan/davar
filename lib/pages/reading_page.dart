@@ -1,84 +1,67 @@
+import 'package:davar/utils/editions.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:hive/hive.dart';
 
 class ReadingPage extends StatefulWidget {
+  Box _box;
+
+  ReadingPage(this._box);
+
   @override
   _ReadingPageState createState() => _ReadingPageState();
 }
 
 class _ReadingPageState extends State<ReadingPage> {
-  Future<bool> _saveAndGoBack() {
-    return showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text('End Reading'),
-            content: Text('Do you want to exit and save the reading progress?'),
-            actions: <Widget>[
-              FlatButton(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text('NO'),
-                onPressed: () {
-                  Navigator.of(context).pop(false);
-                },
-              ),
-              FlatButton(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text('YES'),
-                onPressed: () {
-                  Navigator.of(context).pop(true);
-                },
-              ),
-            ],
-          );
-        });
+  String _url;
+
+  @override
+  void initState() {
+    super.initState();
+    _url = widget._box.get('progress', defaultValue: bibleEditions[0].url);
+  }
+
+  void _setUrl(String url) {
+    if (this._url == url) return;
+    print(url);
+    this._url = url;
+    widget._box.put('progress', url);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: WillPopScope(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                child: ListTile(
-                  tileColor: Colors.blue,
-                  title: Text(
-                    'Save progress',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  subtitle: Text(
-                    "Press back to save progress and exit",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  trailing: Icon(
-                    Icons.save,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              Divider(
-                height: 0,
-                thickness: 2.0,
-                color: Colors.white,
-              ),
-              Expanded(
-                child: WebView(
-                  javascriptMode: JavascriptMode.unrestricted,
-                  initialUrl:
-                      'https://www.jw.org/en/library/bible/study-bible/books/',
-                ),
-              ),
-            ],
+      body: Column(
+        children: [
+          Container(
+            height: MediaQuery.of(context).padding.top,
+            width: double.infinity,
+            color: Color.fromRGBO(55, 52, 51, 1),
           ),
-        ),
-        onWillPop: _saveAndGoBack,
+          ListTile(
+            title: Text(
+              'Reading ..',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: Text(
+              'Your progress is automatically saved',
+              style: TextStyle(color: Colors.white),
+            ),
+            tileColor: Color.fromRGBO(55, 52, 51, 1),
+            trailing: IconButton(
+              color: Colors.white,
+              icon: Icon(Icons.check),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          Expanded(
+            child: InAppWebView(
+              initialUrl: _url,
+              //onLoadStart: (c,s) => print(s),
+              onTitleChanged: (c, s) async => await _setUrl(await c.getUrl()),
+            ),
+          ),
+        ],
       ),
     );
   }

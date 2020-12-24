@@ -6,14 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(Bootstrap());
-  // TODO: CONFIGURE PROGUARD FOR RELEASE (NOTIF)
 }
 
 
 class Bootstrap extends StatelessWidget {
-
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
