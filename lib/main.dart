@@ -16,7 +16,7 @@ class Bootstrap extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Davar',
-      debugShowCheckedModeBanner: true,
+      debugShowCheckedModeBanner: false,
       home:  HomePage(),
     );
   }
